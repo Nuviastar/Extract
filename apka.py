@@ -171,7 +171,7 @@ if uploaded_files:
                     
                     # Wysłanie prosto do OpenAI (z pominięciem lokalnego FastAPI)
                     response = client.chat.completions.create(
-                        model="gpt-mini 4o",
+                        model="gpt-40-mini",
                         messages=[
                             {
                                 "role": "user",
