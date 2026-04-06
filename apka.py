@@ -176,7 +176,7 @@ if uploaded_files:
                             {
                                 "role": "user",
                                 "content": [
-                                    {"type": "text", "text": aktywny_prompt},
+                                    {"type": "text", "text": prompt},
                                     {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_base64}"}}
                                 ]
                             }
