@@ -151,9 +151,30 @@ st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #666;'>Wgra
 st.divider()
 
 # --- UPLOADER PLIKÓW I SILNIK AI ---
-uploaded_files = st.file_uploader("Wybierz pliki PDF", type=["pdf"], accept_multiple_files=True)
+uploaded_file = st.file_uploader("Wgraj skan lub zrób zdjęcie paragonu", type=["pdf", "png", "jpg", "jpeg"])
 
 if uploaded_files:
+    # Wyciągamy rozszerzenie pliku
+    file_extension = uploaded_file.name.split('.')[-1].lower()
+    
+    base64_images = [] # Tu przechowujemy gotowe obrazki dla AI
+
+    if file_extension == 'pdf':
+        # TWÓJ STARY KOD DLA PDF
+        import fitz
+        doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+        for page in doc:
+            pix = page.get_pixmap(dpi=150) # dla lepszej wydajności możesz zmienić dpi
+            img_bytes = pix.tobytes("png")
+            base64_images.append(base64.b64encode(img_bytes).decode('utf-8'))
+            
+    elif file_extension in ['png', 'jpg', 'jpeg']:
+        # NOWY KOD DLA ZDJĘĆ Z TELEFONU
+        img_bytes = uploaded_file.read()
+        base64_images.append(base64.b64encode(img_bytes).decode('utf-8'))
+
+    # ----- TUTAJ RESZTA TWOJEGO KODU -----
+    # Teraz masz gotową listę base64_images, którą wysyłasz do gpt-4o-mini
     if st.button("🚀 Przetwórz i wygeneruj Excela"):
         with st.spinner("Sztuczna inteligencja czyta dokumenty (to może zająć kilkanaście sekund)..."):
             
