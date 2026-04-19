@@ -151,30 +151,10 @@ st.markdown("<p style='text-align: center; font-size: 1.2rem; color: #666;'>Wgra
 st.divider()
 
 # --- UPLOADER PLIKÓW I SILNIK AI ---
-uploaded_file = st.file_uploader("Wgraj skan lub zrób zdjęcie paragonu", type=["pdf", "png", "jpg", "jpeg"])
+# Dodałem "accept_multiple_files=True", by wgrywać kilka plików na raz
+uploaded_files = st.file_uploader("Wgraj skany lub zrób zdjęcia dokumentów", type=["pdf", "png", "jpg", "jpeg"], accept_multiple_files=True)
 
 if uploaded_files:
-    # Wyciągamy rozszerzenie pliku
-    file_extension = uploaded_file.name.split('.')[-1].lower()
-    
-    base64_images = [] # Tu przechowujemy gotowe obrazki dla AI
-
-    if file_extension == 'pdf':
-        # TWÓJ STARY KOD DLA PDF
-        import fitz
-        doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
-        for page in doc:
-            pix = page.get_pixmap(dpi=150) # dla lepszej wydajności możesz zmienić dpi
-            img_bytes = pix.tobytes("png")
-            base64_images.append(base64.b64encode(img_bytes).decode('utf-8'))
-            
-    elif file_extension in ['png', 'jpg', 'jpeg']:
-        # NOWY KOD DLA ZDJĘĆ Z TELEFONU
-        img_bytes = uploaded_file.read()
-        base64_images.append(base64.b64encode(img_bytes).decode('utf-8'))
-
-    # ----- TUTAJ RESZTA TWOJEGO KODU -----
-    # Teraz masz gotową listę base64_images, którą wysyłasz do gpt-4o-mini
     if st.button("🚀 Przetwórz i wygeneruj Excela"):
         with st.spinner("Sztuczna inteligencja czyta dokumenty (to może zająć kilkanaście sekund)..."):
             
@@ -183,14 +163,25 @@ if uploaded_files:
             wszystkie_dane = []
             
             try:
+                # Rozpoczynamy pętlę dla KAŻDEGO wgranego pliku
                 for file in uploaded_files:
-                    # Zamiana PDF na obraz
-                    doc = fitz.open(stream=file.getvalue(), filetype="pdf")
-                    strona = doc.load_page(0)
-                    pix = strona.get_pixmap(dpi=150)
-                    img_base64 = base64.b64encode(pix.tobytes("png")).decode("utf-8")
                     
-                    # Wysłanie prosto do OpenAI (z pominięciem lokalnego FastAPI)
+                    # 1. Sprawdzamy rozszerzenie konkretnego pliku
+                    file_extension = file.name.split('.')[-1].lower()
+                    img_base64 = ""
+                    
+                    # 2. Przerabiamy dokument na kod Base64 (zrozumiały dla AI)
+                    if file_extension == 'pdf':
+                        doc = fitz.open(stream=file.getvalue(), filetype="pdf")
+                        strona = doc.load_page(0) # Bierzemy pierwszą stronę dokumentu
+                        pix = strona.get_pixmap(dpi=150)
+                        img_base64 = base64.b64encode(pix.tobytes("png")).decode("utf-8")
+                        
+                    elif file_extension in ['png', 'jpg', 'jpeg']:
+                        img_bytes = file.getvalue()
+                        img_base64 = base64.b64encode(img_bytes).decode('utf-8')
+
+                    # 3. Wysłanie pliku do AI
                     response = client.chat.completions.create(
                         model="gpt-4o-mini",
                         messages=[
@@ -198,7 +189,8 @@ if uploaded_files:
                                 "role": "user",
                                 "content": [
                                     {"type": "text", "text": aktywny_prompt},
-                                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_base64}"}}
+                                    # Używamy image_url by przekazać zdjęcie/skan do modelu wizyjnego
+                                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_base64}"}}
                                 ]
                             }
                         ],
@@ -208,7 +200,7 @@ if uploaded_files:
                     wynik_json = json.loads(response.choices[0].message.content)
                     wszystkie_dane.append(wynik_json)
                 
-                # Zapis i pobieranie Excela (CSV)
+                # 4. Zapis i pobieranie Excela (wykonuje się raz, gdy pętla przerobi wszystkie pliki)
                 if wszystkie_dane:
                     df = pd.DataFrame(wszystkie_dane)
                     csv_buffer = df.to_csv(index=False, sep=';', encoding='utf-8-sig')
